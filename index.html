@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Presale</title>
+  </head>
+  <body>
+    <h1>Presale</h1>
+    <form id="buyForm">
+      <label for="amount">Amount (in BNB)</label>
+      <input type="number" id="amount" name="amount" step="0.01" min="0.05" max="2" required />
+      <button type="submit">Buy Tokens</button>
+    </form>
+
+    <div id="message"></div>
+
+    <script>
+      // Define the contract address and ABI
+      const contractAddress = "0x50ac1B241FB9dD21067fE294f4b7800A8ba2dF61";
+      const contractABI = [[{"inputs":[{"internalType":"address","name":"_tokenAddress","type":"address"},{"internalType":"uint256","name":"_rate","type":"uint256"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Bought","type":"event"},{"inputs":[],"name":"buy","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[],"name":"maxPurchase","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"minPurchase","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"rate","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_rate","type":"uint256"}],"name":"setRate","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"sold","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"tokenAddress","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"}]];
+
+      // Initialize the contract instance
+      const web3 = new Web3(window.ethereum);
+      const presaleContract = new web3.eth.Contract(contractABI, contractAddress);
+
+      // Connect to the user's MetaMask wallet
+      async function connectWallet() {
+        try {
+          await window.ethereum.request({ method: "eth_requestAccounts" });
+          return true;
+        } catch (error) {
+          console.error(error);
+          return false;
+        }
+      }
+
+      // Handle the buy form submission
+      async function handleBuyForm(event) {
+        event.preventDefault();
+
+        const amount = event.target.amount.value;
+        const value = web3.utils.toWei(amount, "ether");
+
+        // Connect to the user's wallet
+        const connected = await connectWallet();
+        if (!connected) {
+          document.getElementById("message").textContent = "Please connect to your MetaMask wallet.";
+          return;
+        }
+
+        // Call the buy function on the contract
+        presaleContract.methods.buy().send({ from: web3.eth.accounts.givenProvider.selectedAddress, value })
+          .on("transactionHash", (hash) => {
+            document.getElementById("message").textContent = "Transaction sent, waiting for confirmation...";
+          })
+          .on("confirmation", (confirmationNumber, receipt) => {
+            document.getElementById("message").textContent = `Transaction confirmed, tokens purchased: ${receipt.events.Bought.returnValues[0]}.`;
+          })
+          .on("error", (error) => {
+            console.error(error);
+            document.getElementById("message").textContent = "Error: " + error.message;
+          });
+      }
+
+      // Attach the event listeners
+      document.getElementById("buyForm").addEventListener("submit", handleBuyForm);
+    </script>
+  </body>
+</html>
